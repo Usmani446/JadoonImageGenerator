@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Image Generator</title>
+  <link rel="icon" type="image/png" href="https://envs.sh/oyr.jpg" />
+  <style>
+    /*
+     * Copyright (c) 2024 Your Company Hacker Jadoon. All rights reserved.
+     */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    h2 {
+      text-align: center;
+      color: #bb86fc;
+      margin-bottom: 20px;
+    }
+    form {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #bb86fc;
+    }
+    label {
+      font-weight: 600;
+      margin-bottom: 5px;
+      display: block;
+      color: #e0e0e0;
+    }
+    input[type="text"],
+    input[type="number"],
+    select {
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+      background-color: #2c2c2c;
+      color: #e0e0e0;
+      transition: border-color 0.3s ease;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      border-color: #bb86fc;
+      outline: none;
+      background-color: #3a3a3a;
+    }
+    button {
+      background-color: #bb86fc;
+      color: #121212;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+      color: #999;
+    }
+    button:hover:not(:disabled) {
+      background-color: #9a67ea;
+    }
+    #images {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+    #images img {
+      width: 200px;
+      border-radius: 6px;
+      box-shadow: 0 0 10px #bb86fc;
+    }
+    #loading {
+      text-align: center;
+      font-style: italic;
+      color: #bbb;
+      margin-top: 10px;
+    }
+    .error {
+      color: #cf6679;
+      font-size: 0.9rem;
+      margin-top: -10px;
+      margin-bottom: 10px;
+    }
+    .doc-link {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .doc-link a {
+      color: #bb86fc;
+      text-decoration: none;
+    }
+    .doc-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h2>Image Generator</h2>
+
+  <form id="imageForm" onsubmit="event.preventDefault(); generateImages();">
+    <div>
+      <label for="prompt">Prompt:</label>
+      <input type="text" id="prompt" placeholder="e.g. Cats eating popcorn" required />
+      <div id="promptError" class="error" style="display:none;">Please enter a prompt.</div>
+    </div>
+
+    <div>
+      <label for="steps">Steps:</label>
+      <input type="number" id="steps" value="10" min="1" required />
+      <div id="stepsError" class="error" style="display:none;">Steps must be a positive number.</div>
+    </div>
+
+    <div>
+      <label for="n">Number of Images (n):</label>
+      <input type="number" id="n" value="1" min="1" max="10" required />
+      <div id="nError" class="error" style="display:none;">Number of images must be between 1 and 10.</div>
+    </div>
+
+    <div>
+      <label for="model">Model:</label>
+      <select id="model" required>
+        <option value="black-forest-labs/FLUX.1-dev">black-forest-labs/FLUX.1-dev</option>
+        <option value="black-forest-labs/FLUX.1-dev">flux-pro/v1.1-ultra</option>
+        <option value="black-forest-labs/FLUX.1-dev">flux-pro/v1.1-ultra-raw</option>
+        <option value="black-forest-labs/FLUX.1-dev">recraft-v3</option>
+      </select>
+    </div>
+
+    <button type="submit" id="generateBtn">Generate</button>
+  </form>
+
+  <div class="doc-link">
+    <a href="api_v2_usage.html" target="_blank">View API v2 Usage Documentation</a>
+  </div>
+
+  <div id="loading" style="display:none;">Generating images, please wait...</div>
+
+  <h3>Generated Images:</h3>
+  <div id="images"></div>
+
+  <script>
+    /*
+     * Copyright (c) 2024 Your Company Name. All rights reserved.
+     */
+    function validateInputs(prompt, steps, n) {
+      let valid = true;
+
+      const promptError = document.getElementById('promptError');
+      const stepsError = document.getElementById('stepsError');
+      const nError = document.getElementById('nError');
+
+      promptError.style.display = 'none';
+      stepsError.style.display = 'none';
+      nError.style.display = 'none';
+
+      if (!prompt.trim()) {
+        promptError.style.display = 'block';
+        valid = false;
+      }
+      if (!(steps > 0)) {
+        stepsError.style.display = 'block';
+        valid = false;
+      }
+      if (!(n >= 1 && n <= 10)) {
+        nError.style.display = 'block';
+        valid = false;
+      }
+      return valid;
+    }
+
+    async function generateImages() {
+      const prompt = document.getElementById('prompt').value;
+      const steps = parseInt(document.getElementById('steps').value);
+      const n = parseInt(document.getElementById('n').value);
+      const model = document.getElementById('model').value;
+
+      if (!validateInputs(prompt, steps, n)) {
+        return;
+      }
+
+      const generateBtn = document.getElementById('generateBtn');
+      const loading = document.getElementById('loading');
+      const container = document.getElementById('images');
+
+      generateBtn.disabled = true;
+      loading.style.display = 'block';
+      container.innerHTML = '';
+
+      try {
+        const res = await fetch('api.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, steps, n, model })
+        });
+
+        const data = await res.json();
+
+        if (data?.data) {
+          data.data.forEach(img => {
+            const image = document.createElement('img');
+            image.src = img.url;
+            container.appendChild(image);
+          });
+        } else {
+          container.innerHTML = '<p>Image generation failed.</p>';
+        }
+      } catch (error) {
+        container.innerHTML = '<p>Error occurred while generating images.</p>';
+      } finally {
+        generateBtn.disabled = false;
+        loading.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>
